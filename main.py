@@ -1,12 +1,3 @@
-# Patch sqlite3 for ChromaDB on Render/Linux (Must be top of main.py)
-import sys
-try:
-    __import__('pysqlite3')
-    import sys
-    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-except ImportError:
-    pass
-
 from fastapi import FastAPI, Form, Request, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from agent import PersonalAgent

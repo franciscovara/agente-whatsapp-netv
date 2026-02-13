@@ -6,9 +6,9 @@ langchain-core
 langchain-community
 langchain-text-splitters
 langchain-openai
-chromadb
+langchain-openai
+faiss-cpu
 tiktoken
-pysqlite3-binary
 python-dotenv
 twilio
 python-multipart

@@ -1,5 +1,5 @@
 from langchain_community.document_loaders import TextLoader
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_core.documents import Document
@@ -9,7 +9,12 @@ from langchain_core.runnables import RunnablePassthrough
 class PersonalAgent:
     def __init__(self, profile_path: str, business_path: str):
         self.llm = ChatOpenAI(model="gpt-4", temperature=0.7)
-        self.db = self._create_vector_db(profile_path, business_path)
+        try:
+            self.db = self._create_vector_db(profile_path, business_path)
+            print("DEBUG: Base de datos vectorial (FAISS) creada con éxito.")
+        except Exception as e:
+            print(f"CRITICAL ERROR creando Vector DB: {e}")
+            raise e
         
         self.prompt = ChatPromptTemplate.from_template(
             """
@@ -39,14 +44,21 @@ class PersonalAgent:
         docs = []
         for path in [profile_path, business_path]:
             if os.path.exists(path):
+                print(f"DEBUG: Cargando archivo {path}")
                 with open(path, "r", encoding="utf-8") as f:
                     docs.append(Document(page_content=f.read(), metadata={"source": path}))
+            else:
+                print(f"WARNING: Archivo no encontrado {path}")
         
+        if not docs:
+            raise ValueError("No se encontraron documentos para indexar.")
+
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         chunks = text_splitter.split_documents(docs)
+        print(f"DEBUG: Documentos divididos en {len(chunks)} fragmentos.")
         
-        # Usa Chroma en memoria para búsqueda rápida
-        return Chroma.from_documents(chunks, OpenAIEmbeddings())
+        # Usa FAISS en memoria
+        return FAISS.from_documents(chunks, OpenAIEmbeddings())
 
     def get_response(self, user_message: str) -> str:
         print(f"DEBUG: Generando respuesta para: {user_message}")
