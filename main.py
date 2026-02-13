@@ -15,14 +15,26 @@ PROFILE_PATH = os.path.join(BASE_DIR, "data", "miperfil.md")
 BUSINESS_PATH = os.path.join(BASE_DIR, "data", "netv.md")
 
 # Inicializar el agente
-if os.path.exists(PROFILE_PATH) and os.path.exists(BUSINESS_PATH):
-    agent = PersonalAgent(PROFILE_PATH, BUSINESS_PATH)
-elif not os.path.exists(PROFILE_PATH):
-    print(f"ERROR: No se encontró el archivo de perfil en {PROFILE_PATH}")
-    agent = None
-elif not os.path.exists(BUSINESS_PATH):
-    print(f"ERROR: No se encontró el archivo de negocio en {BUSINESS_PATH}")
-    agent = None
+agent = None
+startup_error = None
+
+try:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise ValueError("OPENAI_API_KEY environment variable is missing!")
+
+    if os.path.exists(PROFILE_PATH) and os.path.exists(BUSINESS_PATH):
+        print(f"DEBUG: Loading agent with profiles: {PROFILE_PATH}, {BUSINESS_PATH}")
+        agent = PersonalAgent(PROFILE_PATH, BUSINESS_PATH)
+    else:
+        missing = []
+        if not os.path.exists(PROFILE_PATH): missing.append(PROFILE_PATH)
+        if not os.path.exists(BUSINESS_PATH): missing.append(BUSINESS_PATH)
+        startup_error = f"Missing knowledge files: {', '.join(missing)}"
+        print(f"ERROR: {startup_error}")
+
+except Exception as e:
+    startup_error = str(e)
+    print(f"CRITICAL STARTUP ERROR: {e}")
 
 @app.post("/whatsapp")
 async def reply_whatsapp(Body: str = Form(...)):
@@ -51,4 +63,9 @@ async def reply_whatsapp(Body: str = Form(...)):
 
 @app.get("/")
 def home():
-    return {"status": "online", "service": "Francisco Vara WhatsApp Agent"}
+    status = "online" if agent else "offline"
+    return {
+        "status": status, 
+        "service": "Francisco Vara WhatsApp Agent",
+        "error": startup_error
+    }
